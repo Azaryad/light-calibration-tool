@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Upload - Light Calibration{% endblock %}
+{% block content %}
+<section class="band">
+  <div class="content-narrow">
+    <h1>Upload files</h1>
+    <p class="muted">Use MP4 videos and CSV files whose names contain <code>buzzer</code> and <code>force</code>.</p>
+
+    {% if not ffmpeg_found %}
+      <div class="notice warning">ffmpeg was not found. Preview and export will need ffmpeg.</div>
+    {% else %}
+      <div class="notice ok">ffmpeg: <code>{{ ffmpeg_path }}</code></div>
+    {% endif %}
+
+    <form class="form-stack" action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+      <label class="field">
+        <span>Local video folder</span>
+        <input type="text" name="video_folder" placeholder="C:\path\to\video folder">
+      </label>
+
+      <label class="field">
+        <span>Or upload videos</span>
+        <input type="file" name="videos" accept=".mp4,.mov,.m4v,video/mp4" multiple>
+      </label>
+
+      <label class="field">
+        <span>CSV files</span>
+        <input type="file" name="csvs" accept=".csv,.txt,text/csv" multiple>
+      </label>
+
+      <label class="field">
+        <span>Or local CSV folder</span>
+        <input type="text" name="csv_folder" placeholder="C:\path\to\csv folder">
+      </label>
+
+      <div class="grid-2">
+        <label class="field">
+          <span>Voltage low</span>
+          <input type="number" name="voltage_low" value="0.002" step="0.0001">
+        </label>
+        <label class="field">
+          <span>Voltage high</span>
+          <input type="number" name="voltage_high" value="0.0025" step="0.0001">
+        </label>
+        <label class="field">
+          <span>Min segment seconds</span>
+          <input type="number" name="expected_min" value="20" step="1">
+        </label>
+        <label class="field">
+          <span>Max segment seconds</span>
+          <input type="number" name="expected_max" value="60" step="1">
+        </label>
+      </div>
+
+      <button class="primary" type="submit">Continue</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

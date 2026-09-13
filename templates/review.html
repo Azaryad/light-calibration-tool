@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Review - Light Calibration{% endblock %}
+{% block content %}
+<section class="band">
+  <div class="content-wide">
+    <div class="section-head">
+      <div>
+        <h1>Review segments</h1>
+        <p class="muted">{{ manifest.segments|length }} CSV segment(s), {{ manifest.videos|length }} video camera(s)</p>
+      </div>
+      <form action="{{ url_for('export', job_id=manifest.id) }}" method="post">
+        <button class="primary" type="submit" {% if not ffmpeg_found %}disabled{% endif %}>Export zip</button>
+      </form>
+    </div>
+
+    {% if not ffmpeg_found %}
+      <div class="notice warning">ffmpeg was not found. Install ffmpeg or set FFMPEG_PATH before export.</div>
+    {% endif %}
+
+    <form action="{{ url_for('adjust', job_id=manifest.id) }}" method="post" id="adjust-form" class="form-stack">
+      <div class="toolbar">
+        <button class="primary" type="submit">Save frame corrections</button>
+      </div>
+
+    {% for segment in manifest.segments %}
+      <article class="segment">
+        <div class="section-head">
+          <div>
+            <h2>{{ segment.label }}</h2>
+            <p class="muted">
+              CSV duration {{ segment.csv.duration|sec }} |
+              {{ segment.force.name }} |
+              {{ segment.buzzer.name }}
+            </p>
+          </div>
+          <span class="badge {{ segment.confidence }}">{{ "OK" if segment.ok else "Check" }}</span>
+        </div>
+
+        {% if segment.warnings %}
+          <div class="notice warning">
+            {% for warning in segment.warnings %}
+              <div>{{ warning }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Duration</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>CSV</td>
+                <td>{{ segment.csv.start_time|num(6) }}</td>
+                <td>{{ segment.csv.end_time|num(6) }}</td>
+                <td>{{ segment.csv.duration|sec }}</td>
+                <td>
+                  {{ segment.force.stats.samples }} force samples,
+                  median dt {{ segment.force.stats.median_dt|sec }}
+                </td>
+              </tr>
+              {% for video in manifest.videos %}
+                {% set clip = segment.videos.get(video.id) if segment.videos is defined else none %}
+                <tr>
+                  <td>{{ video.name }}</td>
+                  <td>{{ clip.start_time|sec if clip else "-" }}</td>
+                  <td>{{ clip.end_time|sec if clip else "-" }}</td>
+                  <td>{{ clip.duration|sec if clip else "-" }}</td>
+                  <td>
+                    {% if clip and clip.ok %}
+                      frames {{ clip.start_frame }} to {{ clip.end_frame }}
+                      {% if clip.csv_delta is defined %}, delta vs CSV {{ clip.csv_delta|sec }}{% endif %}
+                    {% else %}
+                      missing light events
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="manual-grid">
+          {% for video in manifest.videos %}
+            {% set clip = segment.videos.get(video.id) if segment.videos is defined else none %}
+            <div class="manual-card">
+              <h3>{{ video.name }}</h3>
+              {% if clip and clip.ok and ffmpeg_found %}
+                {% set start_window = clip.start_time - 3 %}
+                {% if start_window < 0 %}{% set start_window = 0 %}{% endif %}
+                {% set finish_window = clip.end_time - 3 %}
+                {% if finish_window < 0 %}{% set finish_window = 0 %}{% endif %}
+
+                <input
+                  type="hidden"
+                  name="adjust__{{ segment.id }}__{{ video.id }}__start"
+                  value="{{ clip.start_time }}"
+                  data-adjust-value
+                  data-adjust-kind="start"
+                >
+                <input
+                  type="hidden"
+                  name="adjust__{{ segment.id }}__{{ video.id }}__end"
+                  value="{{ clip.end_time }}"
+                  data-adjust-value
+                  data-adjust-kind="finish"
+                >
+
+                <div
+                  class="manual-window"
+                  data-manual-window
+                  data-kind="start"
+                  data-window-start="{{ start_window }}"
+                  data-fps="{{ video.meta.fps }}"
+                >
+                  <div class="manual-title">
+                    <span>Start</span>
+                    <output data-time-output>{{ clip.start_time|sec }}</output>
+                  </div>
+                  <video class="manual-review-video" muted playsinline preload="metadata" src="{{ url_for('manual_preview_clip', job_id=manifest.id, video_id=video.id, segment_id=segment.id, kind='start') }}"></video>
+                  <div class="frame-controls">
+                    <button class="secondary" type="button" data-frame-step="-1">&#9664; frame</button>
+                    <button class="secondary" type="button" data-toggle-play>Play</button>
+                    <button class="secondary" type="button" data-set-frame>Set frame</button>
+                    <button class="secondary" type="button" data-frame-step="1">frame &#9654;</button>
+                  </div>
+                </div>
+
+                <div
+                  class="manual-window"
+                  data-manual-window
+                  data-kind="finish"
+                  data-window-start="{{ finish_window }}"
+                  data-fps="{{ video.meta.fps }}"
+                >
+                  <div class="manual-title">
+                    <span>Finish</span>
+                    <output data-time-output>{{ clip.end_time|sec }}</output>
+                  </div>
+                  <video class="manual-review-video" muted playsinline preload="metadata" src="{{ url_for('manual_preview_clip', job_id=manifest.id, video_id=video.id, segment_id=segment.id, kind='finish') }}"></video>
+                  <div class="frame-controls">
+                    <button class="secondary" type="button" data-frame-step="-1">&#9664; frame</button>
+                    <button class="secondary" type="button" data-toggle-play>Play</button>
+                    <button class="secondary" type="button" data-set-frame>Set frame</button>
+                    <button class="secondary" type="button" data-frame-step="1">frame &#9654;</button>
+                  </div>
+                </div>
+
+                <div class="manual-duration">
+                  Cut duration: <output data-duration-output>{{ clip.duration|sec }}</output>
+                  {% if clip.manual_adjusted %}<span class="muted">manual</span>{% endif %}
+                </div>
+              {% elif clip and clip.ok %}
+                <p class="muted">Manual frame review needs ffmpeg.</p>
+              {% else %}
+                <p class="muted">No preview available.</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </article>
+    {% endfor %}
+    </form>
+  </div>
+</section>
+<script src="{{ url_for('static', filename='review_adjust.js') }}"></script>
+{% endblock %}

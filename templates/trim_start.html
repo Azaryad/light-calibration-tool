@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Start trim - Light Calibration{% endblock %}
+{% block content %}
+<section class="band">
+  <div class="content-wide">
+    <div class="section-head">
+      <div>
+        <h1>Set video start</h1>
+        <p class="muted">{{ manifest.videos|length }} video camera(s)</p>
+      </div>
+    </div>
+
+    <form action="{{ url_for('save_trim_start', job_id=manifest.id) }}" method="post" class="form-stack">
+      <div class="toolbar">
+        <label class="field compact">
+          <span>Apply seconds to all</span>
+          <input type="number" min="0" step="0.001" value="0" data-global-trim>
+        </label>
+        <button class="secondary" type="button" data-apply-all-trim>Apply</button>
+      </div>
+
+      {% for video in manifest.videos %}
+        <section class="segment" data-trim-block>
+          <div class="section-head">
+            <div>
+              <h2>{{ video.name }}</h2>
+              <p class="muted">
+                {{ video.meta.width }} x {{ video.meta.height }},
+                {{ video.meta.duration|sec }},
+                {{ video.meta.fps|num(2) }} fps,
+                {{ video.source }}
+              </p>
+            </div>
+          </div>
+
+          <div class="trim-preview">
+            <img
+              data-preview-frame
+              src="{{ video.first_frame_url }}"
+              alt="Preview frame for {{ video.name }}"
+            >
+            <div class="trim-player-slot" data-player-slot></div>
+          </div>
+
+          <div class="inline-controls">
+            <label class="field compact">
+              <span>Start seconds</span>
+              <input type="number" name="trim_{{ video.id }}" min="0" step="0.001" value="{{ video.trim_start|default(0) }}" data-trim-input>
+            </label>
+            <button
+              class="secondary"
+              type="button"
+              data-preview-time
+              data-frame-url="{{ url_for('video_frame', job_id=manifest.id, video_id=video.id) }}"
+            >Preview frame</button>
+            <button
+              class="secondary"
+              type="button"
+              data-load-player
+              data-video-url="{{ url_for('source_video', job_id=manifest.id, video_id=video.id) }}"
+            >Load player</button>
+            <button class="secondary" type="button" data-use-current-time disabled>Use current time</button>
+          </div>
+        </section>
+      {% endfor %}
+
+      <button class="primary" type="submit">Continue to light ROI</button>
+    </form>
+  </div>
+</section>
+<script src="{{ url_for('static', filename='trim_start.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Mark lights - Light Calibration{% endblock %}
+{% block content %}
+<section class="band">
+  <div class="content-wide">
+    <h1>Mark the light in each camera</h1>
+    <p class="muted">Draw a tight rectangle around the light. Drag the box to move it or drag a corner to resize it.</p>
+
+    {% if manifest.warnings %}
+      <div class="notice warning">
+        {% for warning in manifest.warnings %}
+          <div>{{ warning }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form action="{{ url_for('analyze_roi', job_id=manifest.id) }}" method="post" class="form-stack">
+      {% for video in manifest.videos %}
+        <section class="roi-block" data-roi-block data-video-id="{{ video.id }}">
+          <div class="section-head">
+            <div>
+              <h2>{{ video.name }}</h2>
+              <p class="muted">
+                {{ video.meta.width }} x {{ video.meta.height }},
+                {{ video.meta.duration|sec }},
+                {{ video.meta.fps|num(2) }} fps,
+                start {{ video.trim_start|sec }}
+              </p>
+            </div>
+            <button class="secondary" type="button" data-reset-roi>Reset box</button>
+          </div>
+
+          <div class="canvas-wrap">
+            <canvas data-roi-canvas></canvas>
+            <img data-roi-image src="{{ video.first_frame_url }}" alt="First frame for {{ video.name }}">
+          </div>
+
+          <input type="hidden" name="roi_{{ video.id }}_x" data-roi-x>
+          <input type="hidden" name="roi_{{ video.id }}_y" data-roi-y>
+          <input type="hidden" name="roi_{{ video.id }}_w" data-roi-w>
+          <input type="hidden" name="roi_{{ video.id }}_h" data-roi-h>
+        </section>
+      {% endfor %}
+
+      <button class="primary" type="submit">Analyze light pulses</button>
+    </form>
+  </div>
+</section>
+<script src="{{ url_for('static', filename='roi.js') }}"></script>
+{% endblock %}
