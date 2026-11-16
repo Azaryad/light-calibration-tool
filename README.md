@@ -21,7 +21,7 @@ The CSV files may still be named `buzzer` and `force`. In this version, `buzzer`
 ## Setup on a new computer
 
 ```powershell
-git clone git@github.com:Azaryad/light-calibration-tool.git
+git clone https://github.com/Azaryad/light-calibration-tool.git
 cd light-calibration-tool
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
